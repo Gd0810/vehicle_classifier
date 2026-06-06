@@ -1,0 +1,19 @@
+[project]
+name = "vehicle-type-classification"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask==3.0.3",
+    "matplotlib==3.9.0",
+    "numpy==1.26.4",
+    "pandas==2.2.2",
+    "pillow==10.3.0",
+    "scikit-learn==1.5.0",
+    "seaborn==0.13.2",
+    "torch==2.3.1",
+    "torchvision==0.18.1",
+    "tqdm==4.66.4",
+    "werkzeug==3.0.3",
+]

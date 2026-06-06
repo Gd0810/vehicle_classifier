@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>VehicleAI — Classification System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="brand-icon">⬡</span>
+    <span class="brand-name">VehicleAI</span>
+  </div>
+  <div class="nav-links">
+    <a href="#classify" class="nav-link active" data-tab="classify">Classify</a>
+    <a href="#dataset"  class="nav-link"         data-tab="dataset">Dataset</a>
+    <a href="#training" class="nav-link"         data-tab="training">Training</a>
+    <a href="#about"    class="nav-link"         data-tab="about">About</a>
+  </div>
+  <div class="nav-status">
+    {% if model_ready %}
+      <span class="status-dot online"></span>
+      <span class="status-text">Model Ready</span>
+    {% else %}
+      <span class="status-dot offline"></span>
+      <span class="status-text">No Model</span>
+    {% endif %}
+  </div>
+</nav>
+
+<!-- ── HERO ─────────────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-badge">Deep Learning · ResNet-50 · 21 Classes</div>
+    <h1 class="hero-title">
+      Vehicle Type<br>
+      <span class="hero-accent">Classification</span>
+    </h1>
+    <p class="hero-sub">
+      Upload an image — our AI identifies {{ classes|length }} vehicle types with confidence scoring,
+      category analysis, and detailed visualizations.
+    </p>
+    {% if not model_ready %}
+    <div class="hero-warn">
+      <span>⚠</span>
+      <span>Train the model first: <code>python train.py --images_dir ./images</code></span>
+    </div>
+    {% endif %}
+  </div>
+  <div class="hero-stats">
+    {% if stats %}
+    <div class="hstat"><span class="hstat-val">{{ stats.total_images | default('3,615') }}</span><span class="hstat-lbl">Images</span></div>
+    <div class="hstat-sep"></div>
+    <div class="hstat"><span class="hstat-val">21</span><span class="hstat-lbl">Classes</span></div>
+    <div class="hstat-sep"></div>
+    <div class="hstat"><span class="hstat-val">7</span><span class="hstat-lbl">Categories</span></div>
+    <div class="hstat-sep"></div>
+    <div class="hstat"><span class="hstat-val">{{ model_meta.best_val_acc | default('—') }}%</span><span class="hstat-lbl">Val Acc</span></div>
+    {% endif %}
+  </div>
+</header>
+
+<!-- ══ TABS WRAPPER ══════════════════════════════════════════════════ -->
+<main class="main-wrap">
+
+  <!-- ── TAB: CLASSIFY ──────────────────────────────────────────────── -->
+  <section id="classify" class="tab-section active">
+    <div class="classify-grid">
+
+      <!-- Upload Panel -->
+      <div class="panel upload-panel">
+        <div class="panel-header">
+          <span class="panel-icon">📤</span>
+          <span>Upload Image</span>
+        </div>
+
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-inner" id="dropInner">
+            <div class="drop-icon">🖼️</div>
+            <p class="drop-title">Drag & drop your image here</p>
+            <p class="drop-sub">or click to browse · JPG, PNG, WEBP</p>
+            <label class="btn-upload" for="fileInput">Choose File</label>
+            <input type="file" id="fileInput" accept="image/*" hidden>
+          </div>
+          <img id="previewImg" class="preview-image" hidden>
+        </div>
+
+        <button class="btn-classify" id="classifyBtn" disabled>
+          <span class="btn-icon">🔍</span>
+          <span id="btnText">Classify Vehicle</span>
+        </button>
+      </div>
+
+      <!-- Result Panel -->
+      <div class="panel result-panel" id="resultPanel">
+        <div class="panel-header">
+          <span class="panel-icon">🎯</span>
+          <span>Prediction Result</span>
+        </div>
+
+        <div class="result-placeholder" id="resultPlaceholder">
+          <div class="placeholder-icon">🚗</div>
+          <p>Upload an image to see the classification result</p>
+        </div>
+
+        <div class="result-content" id="resultContent" hidden>
+          <div class="prediction-card" id="predCard">
+            <div class="pred-emoji" id="predEmoji">🚗</div>
+            <div class="pred-info">
+              <div class="pred-class" id="predClass">—</div>
+              <div class="pred-category" id="predCategory">—</div>
+            </div>
+            <div class="pred-conf" id="predConf">—%</div>
+          </div>
+
+          <div class="conf-bar-row">
+            <span class="conf-label">Confidence</span>
+            <div class="conf-track">
+              <div class="conf-fill" id="confFill"></div>
+            </div>
+            <span class="conf-val" id="confVal">0%</span>
+          </div>
+
+          <div class="top-results" id="topResults"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-row" id="chartsRow" hidden>
+      <div class="chart-card">
+        <h3 class="chart-title">Top-10 Confidence Scores</h3>
+        <img class="chart-img" id="barChartImg">
+      </div>
+      <div class="chart-card">
+        <h3 class="chart-title">Category Radar</h3>
+        <img class="chart-img" id="radarChartImg">
+      </div>
+      <div class="chart-card">
+        <h3 class="chart-title">Confidence Distribution</h3>
+        <img class="chart-img" id="pieChartImg">
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB: DATASET ───────────────────────────────────────────────── -->
+  <section id="dataset" class="tab-section">
+    <div class="section-header">
+      <h2>Dataset Overview</h2>
+      <p>Explore the class distribution and category breakdown of the training data.</p>
+    </div>
+
+    <div class="dataset-stats-grid" id="dsStatsGrid">
+      <div class="ds-stat"><span class="ds-val" id="dsTotal">—</span><span class="ds-lbl">Total Images</span></div>
+      <div class="ds-stat"><span class="ds-val" id="dsLabels">—</span><span class="ds-lbl">Total Labels</span></div>
+      <div class="ds-stat"><span class="ds-val">21</span><span class="ds-lbl">Vehicle Classes</span></div>
+      <div class="ds-stat"><span class="ds-val" id="dsTopClass">—</span><span class="ds-lbl">Most Common</span></div>
+    </div>
+
+    <div class="charts-row" id="dsCharts">
+      <div class="chart-card wide">
+        <h3 class="chart-title">Samples per Vehicle Class</h3>
+        <div class="chart-loader" id="dsBarLoader">Loading…</div>
+        <img class="chart-img" id="dsBarChart" hidden>
+      </div>
+      <div class="chart-card">
+        <h3 class="chart-title">Category Distribution</h3>
+        <div class="chart-loader" id="dsPieLoader">Loading…</div>
+        <img class="chart-img" id="dsPieChart" hidden>
+      </div>
+    </div>
+
+    <!-- Class grid -->
+    <div class="section-header" style="margin-top:2rem">
+      <h2>All Vehicle Classes</h2>
+    </div>
+    <div class="class-grid">
+      {% for cls in classes %}
+      {% set info = vehicle_info.get(cls, {}) %}
+      <div class="class-card" style="--accent: {{ info.get('color','#58a6ff') }}">
+        <div class="class-emoji">{{ info.get('emoji','🚗') }}</div>
+        <div class="class-name">{{ cls }}</div>
+        <div class="class-cat">{{ info.get('category','—') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── TAB: TRAINING ──────────────────────────────────────────────── -->
+  <section id="training" class="tab-section">
+    <div class="section-header">
+      <h2>Training Artifacts</h2>
+      <p>Visualizations generated after model training.</p>
+    </div>
+
+    {% if model_meta %}
+    <div class="dataset-stats-grid">
+      <div class="ds-stat"><span class="ds-val">{{ model_meta.get('epochs','—') }}</span><span class="ds-lbl">Epochs</span></div>
+      <div class="ds-stat"><span class="ds-val">{{ model_meta.get('best_val_acc','—') }}%</span><span class="ds-lbl">Best Val Acc</span></div>
+      <div class="ds-stat"><span class="ds-val">{{ model_meta.get('train_samples','—') }}</span><span class="ds-lbl">Train Samples</span></div>
+      <div class="ds-stat"><span class="ds-val">{{ model_meta.get('val_samples','—') }}</span><span class="ds-lbl">Val Samples</span></div>
+    </div>
+    {% endif %}
+
+    <div class="training-plots" id="trainingPlots">
+      <div class="chart-card wide">
+        <h3 class="chart-title">Loss & Accuracy Curves</h3>
+        <div class="chart-loader" id="trainLoader1">Loading plots…</div>
+        <img class="chart-img" id="trainCurves" hidden>
+      </div>
+      <div class="chart-card wide">
+        <h3 class="chart-title">Class Distribution (Training Data)</h3>
+        <div class="chart-loader" id="trainLoader2">Loading plots…</div>
+        <img class="chart-img" id="trainDist" hidden>
+      </div>
+      <div class="chart-card wide">
+        <h3 class="chart-title">Confusion Matrix</h3>
+        <div class="chart-loader" id="trainLoader3">Loading plots…</div>
+        <img class="chart-img" id="trainCM" hidden>
+      </div>
+    </div>
+    <p class="plot-note">Plots are generated after you run <code>python train.py</code>.</p>
+  </section>
+
+  <!-- ── TAB: ABOUT ─────────────────────────────────────────────────── -->
+  <section id="about" class="tab-section">
+    <div class="section-header">
+      <h2>About This Project</h2>
+    </div>
+    <div class="about-grid">
+      <div class="about-card">
+        <div class="about-icon">🧠</div>
+        <h3>Architecture</h3>
+        <p>ResNet-50 pre-trained on ImageNet with a custom classification head: Dropout → Linear(2048→512) → ReLU → Dropout → Linear(512→21) → Sigmoid</p>
+      </div>
+      <div class="about-card">
+        <div class="about-icon">📊</div>
+        <h3>Dataset</h3>
+        <p>Multi-label classification dataset with 3,615+ vehicle images across 21 classes. CSV-based label mapping with one-hot encoding.</p>
+      </div>
+      <div class="about-card">
+        <div class="about-icon">⚙️</div>
+        <h3>Training Strategy</h3>
+        <p>Transfer learning with frozen backbone layers. Only layer4 and the custom head are fine-tuned using Adam optimizer + StepLR scheduler.</p>
+      </div>
+      <div class="about-card">
+        <div class="about-icon">🎯</div>
+        <h3>Loss Function</h3>
+        <p>Binary Cross-Entropy Loss (BCELoss) for multi-label classification. Threshold 0.5 is used to binarize predictions.</p>
+      </div>
+      <div class="about-card">
+        <div class="about-icon">🚀</div>
+        <h3>Quick Start</h3>
+        <div class="code-block">
+          <code>pip install -r requirements.txt</code><br>
+          <code># Add images to ./images/</code><br>
+          <code>python train.py --images_dir ./images</code><br>
+          <code>python app.py</code>
+        </div>
+      </div>
+      <div class="about-card">
+        <div class="about-icon">📁</div>
+        <h3>Project Structure</h3>
+        <div class="code-block">
+          <code>vehicle_classifier/</code><br>
+          <code>├── train.py</code><br>
+          <code>├── app.py</code><br>
+          <code>├── _classes.csv</code><br>
+          <code>├── images/        ← your images</code><br>
+          <code>├── models/</code><br>
+          <code>├── static/</code><br>
+          <code>└── templates/</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── LOADING OVERLAY ───────────────────────────────────────────────── -->
+<div class="loading-overlay" id="loadingOverlay" hidden>
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <p>Classifying vehicle…</p>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

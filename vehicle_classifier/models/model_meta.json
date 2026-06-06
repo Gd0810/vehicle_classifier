@@ -1,0 +1,31 @@
+{
+  "classes": [
+    "Ambulance",
+    "Box Truck",
+    "Bus",
+    "Bus- Small",
+    "Concrete Mixer",
+    "Construction Equipment",
+    "Cyclist",
+    "Fire Truck",
+    "Garbage Truck",
+    "Hatchback",
+    "Motorbike",
+    "Pickup",
+    "Pickup- Utility",
+    "SUV",
+    "Sedan",
+    "Tow Truck",
+    "Tractor Trailer",
+    "Trailer",
+    "Truck- 2-Axle",
+    "Truck- Multi-Axle",
+    "Van"
+  ],
+  "num_classes": 21,
+  "img_size": 224,
+  "best_val_acc": 80.84,
+  "epochs": 20,
+  "train_samples": 2942,
+  "val_samples": 736
+}
